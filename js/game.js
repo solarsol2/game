@@ -104,10 +104,16 @@ class Game {
       const hit = this._findLanding(b, prevBottom);
       if (hit) {
         b.y = hit.surfaceY - C.BALL_RADIUS;
-        const power = this.keys.up ? C.POWER_BOUNCE_MULT : 1;
-        b.vy = C.BOUNCE_VY * power;
+        const isPower = this.keys.up;
+        b.vy = C.BOUNCE_VY * (isPower ? C.POWER_BOUNCE_MULT : 1);
         b.squash = 1;
+        if (this.callbacks.onBounce) this.callbacks.onBounce(isPower);
       }
+    }
+
+    // --- 이동 스파이크 위치 업데이트 ---
+    for (const sp of this.level.movingSpikes) {
+      sp.x = sp.baseX + Math.sin(this.time * 0.001 * sp.speed + sp.phase) * sp.range;
     }
 
     // --- 스파이크 충돌 ---
@@ -123,8 +129,21 @@ class Game {
       }
     }
 
+    // --- 이동 스파이크 충돌 ---
+    for (const sp of this.level.movingSpikes) {
+      const spTop = C.GROUND_Y - 20;
+      const closestX = Math.max(sp.x, Math.min(b.x, sp.x + sp.w));
+      const closestY = Math.max(spTop, Math.min(b.y, C.GROUND_Y));
+      const dx = b.x - closestX;
+      const dy = b.y - closestY;
+      if (dx * dx + dy * dy < C.BALL_RADIUS * C.BALL_RADIUS * 0.7) {
+        this.die();
+        return;
+      }
+    }
+
     // --- 구덩이 낙사 ---
-    if (b.y - C.BALL_RADIUS > C.GROUND_Y + 140) {
+    if (b.y - C.BALL_RADIUS > C.GROUND_Y + 200) {
       this.die();
       return;
     }
@@ -192,11 +211,15 @@ class Game {
       ctx.drawImage(this.bgImage, 0, 0, C.CANVAS_W, C.CANVAS_H);
     } else {
       const sky = ctx.createLinearGradient(0, 0, 0, C.CANVAS_H);
-      sky.addColorStop(0, "#87ceeb");
-      sky.addColorStop(1, "#c9f0ff");
+      sky.addColorStop(0, "#3a6b8a");
+      sky.addColorStop(1, "#5a8faa");
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, C.CANVAS_W, C.CANVAS_H);
     }
+
+    // 배경 어둡게 오버레이
+    ctx.fillStyle = "rgba(0, 0, 0, 0.40)";
+    ctx.fillRect(0, 0, C.CANVAS_W, C.CANVAS_H);
 
     ctx.save();
     ctx.translate(-this.cameraX, 0);
@@ -211,12 +234,20 @@ class Game {
     }
 
     // 발판
-    ctx.fillStyle = "#8a5a2b";
     for (const p of this.level.platforms) {
-      ctx.fillRect(p.x1, p.y, p.x2 - p.x1, 16);
+      const pw = p.x2 - p.x1;
+      // 본체
+      ctx.fillStyle = "#7a4f26";
+      ctx.fillRect(p.x1, p.y, pw, 14);
+      // 상단 하이라이트
+      ctx.fillStyle = "#b87a3e";
+      ctx.fillRect(p.x1, p.y, pw, 4);
+      // 측면 음영
+      ctx.fillStyle = "#4a2e12";
+      ctx.fillRect(p.x1, p.y + 10, pw, 4);
     }
 
-    // 스파이크
+    // 스파이크 (정적 — 빨강)
     ctx.fillStyle = "#e63946";
     for (const sp of this.level.spikes) {
       ctx.beginPath();
@@ -225,6 +256,20 @@ class Game {
       ctx.lineTo(sp.x + sp.w, C.GROUND_Y);
       ctx.closePath();
       ctx.fill();
+    }
+
+    // 이동 스파이크 (주황 + 테두리로 구분)
+    for (const sp of this.level.movingSpikes) {
+      ctx.fillStyle = "#ff7f2a";
+      ctx.beginPath();
+      ctx.moveTo(sp.x, C.GROUND_Y);
+      ctx.lineTo(sp.x + sp.w / 2, C.GROUND_Y - 22);
+      ctx.lineTo(sp.x + sp.w, C.GROUND_Y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#ffcc66";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
     }
 
     // 골(깃발)

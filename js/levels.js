@@ -1,6 +1,8 @@
-// 레벨 절차적 생성기. 레벨 번호를 시드로 사용해 항상 같은 스테이지를 생성한다.
-// 총 10단계(GAME_CONST.TOTAL_LEVELS)로, 단계가 올라갈수록
-// 바닥 구덩이 → 가시 → 공중 발판 순으로 요소가 늘어난다.
+// 레벨 절차적 생성기
+// 설계 원칙: 스테이지마다 장애물 10개 이상 보장
+//   - 평지 구간에 가시 항상(필수) 배치
+//   - 구덩이(낭떠러지) / 계단 발판 / 이동 가시로 다양성 확보
+//   - 평지 최대 180px 제한(긴 쉬는 구간 제거)
 
 function mulberry32(seed) {
   return function () {
@@ -13,86 +15,155 @@ function mulberry32(seed) {
 }
 
 function generateLevel(levelNumber) {
-  const C = GAME_CONST;
+  const C    = GAME_CONST;
   const rand = mulberry32(levelNumber * 7919 + 13);
-  const difficulty = Math.min(1, (levelNumber - 1) / (C.TOTAL_LEVELS - 1)); // 0~1 (10단계 기준)
+  const difficulty = Math.min(1, (levelNumber - 1) / (C.TOTAL_LEVELS - 1)); // 0~1
 
   const groundSegments = [];
-  const platforms = [];
-  const spikes = [];
+  const platforms      = [];
+  const spikes         = [];
+  const movingSpikes   = [];
 
-  const START_X = 120;
-  const SAFE_START_LEN = 260;
+  const START_X       = 120;
+  const SAFE_START    = 240; // 안전한 출발 구간
 
   let cursor = START_X;
-  groundSegments.push({ x1: 0, x2: START_X + SAFE_START_LEN });
-  cursor += SAFE_START_LEN;
+  groundSegments.push({ x1: 0, x2: START_X + SAFE_START });
+  cursor += SAFE_START;
 
-  // 착지 후 한 번의 바운스로 넘을 수 있는 최대 수평 거리(여유 있게 캡)
-  const maxGap = 90 + difficulty * 100; // 90 ~ 190
-  const spikeChance = levelNumber <= 2 ? 0 : Math.min(0.5, 0.15 + difficulty * 0.4);
-  const detourChance = levelNumber <= 3 ? 0 : Math.min(0.4, 0.1 + difficulty * 0.4); // 구덩이+발판 구간
-  const segCount = 5 + Math.floor(levelNumber * 0.7); // 5~12
+  // 낭떠러지 길이 범위 (단계가 오를수록 더 넓어짐)
+  const minGap = 60  + difficulty * 60;   // 60~120px
+  const maxGap = 130 + difficulty * 140;  // 130~270px
+
+  // 각 구간 유형 확률
+  const detourChance = Math.min(0.38, 0.08 + difficulty * 0.38); // 구덩이+발판
+  const stepChance   = Math.min(0.26, 0.06 + difficulty * 0.26); // 계단 발판
+  const gapChance    = 0.20 + difficulty * 0.14;                  // 단순 낙사 구덩이
+  // 나머지 → 짧은 평지 + 필수 가시
+
+  const movingSpikeChance = levelNumber <= 3 ? 0 : Math.min(0.65, 0.12 + difficulty * 0.62);
+  const segCount = 10 + Math.floor(levelNumber * 0.6); // 10~16 구간
 
   for (let i = 0; i < segCount; i++) {
     const roll = rand();
 
+    // ── 구덩이 + 중간 공중 발판 ─────────────────────────────────
     if (roll < detourChance) {
-      // 구덩이 + 공중 발판으로 건너야 하는 구간
-      const gapLen = 60 + rand() * (maxGap - 40);
+      const gapLen  = minGap + rand() * (maxGap - minGap);
       const gapStart = cursor;
       cursor += gapLen;
 
-      const platW = Math.max(70, 150 - difficulty * 70);
-      const platY = C.GROUND_Y - (70 + rand() * 60);
+      const platW  = Math.max(60, 140 - difficulty * 65);
+      const platY  = C.GROUND_Y - (60 + rand() * 75);
       const platX1 = gapStart + gapLen / 2 - platW / 2;
-
       platforms.push({ x1: platX1, x2: platX1 + platW, y: platY });
 
-      // 발판 뒤에 이어지는 착지 구간
-      const nextLen = 160 + rand() * 120;
-      groundSegments.push({ x1: cursor, x2: cursor + nextLen });
-      cursor += nextLen;
-    } else if (roll < detourChance + 0.2 + difficulty * 0.1) {
-      // 단순 구덩이(바닥 갭)
-      const gapLen = 50 + rand() * maxGap;
+      // 착지 구간 (짧게)
+      const land = 80 + rand() * 80;
+      groundSegments.push({ x1: cursor, x2: cursor + land });
+      cursor += land;
+
+    // ── 계단식 연속 발판 구간 ────────────────────────────────────
+    } else if (roll < detourChance + stepChance) {
+      const numP    = 2 + Math.floor(rand() * 2); // 2~3개
+      const platW   = 58 + rand() * 28;
+      const spacing = 82 + rand() * 44;
+      const gap     = spacing * (numP + 1);
+      const gapStart = cursor;
+      cursor += gap;
+
+      for (let p = 0; p < numP; p++) {
+        const px = gapStart + spacing * (p + 1) - platW / 2;
+        const py = C.GROUND_Y - (38 + rand() * 42);
+        platforms.push({ x1: px, x2: px + platW, y: py });
+      }
+
+      const land = 80 + rand() * 70;
+      groundSegments.push({ x1: cursor, x2: cursor + land });
+      cursor += land;
+
+    // ── 단순 낙사 구덩이 ────────────────────────────────────────
+    } else if (roll < detourChance + stepChance + gapChance) {
+      const gapLen = minGap + rand() * (maxGap + 40);
       cursor += gapLen;
-      const nextLen = 150 + rand() * 150;
-      groundSegments.push({ x1: cursor, x2: cursor + nextLen });
-      cursor += nextLen;
+
+      const land = 80 + rand() * 90;
+      groundSegments.push({ x1: cursor, x2: cursor + land });
+      cursor += land;
+
+    // ── 짧은 평지 — 가시 필수 ──────────────────────────────────
     } else {
-      // 평범한 바닥 구간, 가시 배치 가능
-      const len = 200 + rand() * 200;
+      const len = 90 + rand() * 90; // 90~180px (길면 쉬어가므로 제한)
       const seg = { x1: cursor, x2: cursor + len };
       groundSegments.push(seg);
 
-      if (rand() < spikeChance) {
-        const spikeCount = 1 + Math.floor(rand() * (1 + Math.floor(difficulty * 2)));
-        for (let s = 0; s < spikeCount; s++) {
-          const margin = 40;
-          const sx = seg.x1 + margin + rand() * Math.max(10, len - margin * 2 - spikeCount * 30);
-          spikes.push({ x: sx, w: 22 });
-        }
+      // 가시: 항상 최소 1개 ~ 최대 (1+difficulty*3)개
+      const spikeCount = 1 + Math.floor(rand() * (1 + Math.floor(difficulty * 3)));
+      for (let s = 0; s < spikeCount; s++) {
+        const margin = 26;
+        const avail  = Math.max(5, len - margin * 2 - spikeCount * 24);
+        const sx = seg.x1 + margin + rand() * avail;
+        spikes.push({ x: sx, w: 22 });
       }
+
+      // 이동 가시 (level 4+)
+      if (levelNumber > 3 && rand() < movingSpikeChance) {
+        const margin = 46;
+        const bx     = seg.x1 + margin + rand() * Math.max(5, len - margin * 2);
+        movingSpikes.push({
+          baseX: bx, x: bx, w: 22,
+          range: 30 + rand() * 52,
+          speed: 1.0 + rand() * 2.2,
+          phase: rand() * Math.PI * 2,
+        });
+      }
+
       cursor += len;
     }
   }
 
-  // 골 구간
-  const goalPad = 260;
+  // ── 장애물 10개 보장: 부족하면 가시 구간+구덩이 쌍을 추가 ──
+  const obstacleCount =
+    spikes.length +
+    movingSpikes.length +
+    platforms.length +
+    (groundSegments.length - 1); // 구간 사이 구덩이 수
+
+  let extra = 10 - obstacleCount;
+  while (extra > 0) {
+    // 가시 구간
+    const len = 90 + rand() * 70;
+    const seg = { x1: cursor, x2: cursor + len };
+    groundSegments.push(seg);
+    const sx = cursor + 26 + rand() * Math.max(5, len - 52);
+    spikes.push({ x: sx, w: 22 });
+    cursor += len;
+    extra--;
+
+    // 작은 구덩이(낙사 구간)도 장애물로 추가
+    if (extra > 0) {
+      cursor += 60 + rand() * 60; // 구덩이
+      const land = 80 + rand() * 50;
+      groundSegments.push({ x1: cursor, x2: cursor + land });
+      cursor += land;
+      extra--;
+    }
+  }
+
+  // 골 구간 (항상 마지막에 한 번만)
+  const goalPad = 240;
   groundSegments.push({ x1: cursor, x2: cursor + goalPad });
   const goalX = cursor + goalPad / 2;
   cursor += goalPad;
 
-  const levelWidth = cursor + 100;
-
   return {
     id: levelNumber,
-    width: levelWidth,
+    width: cursor + 100,
     start: { x: START_X, y: C.GROUND_Y - C.BALL_RADIUS },
     groundSegments,
     platforms,
     spikes,
+    movingSpikes,
     goal: { x: goalX, y: C.GROUND_Y },
   };
 }
