@@ -29,12 +29,12 @@ function generateLevel(levelNumber) {
   groundSegments.push({ x1: 0, x2: START_X + SAFE_START_LEN });
   cursor += SAFE_START_LEN;
 
-  const maxGap = 110 + difficulty * 130;         // 110~240 (더 긴 낭떠러지)
-  const spikeChance       = levelNumber <= 2 ? 0 : Math.min(0.55, 0.2  + difficulty * 0.4);
-  const movingSpikeChance = levelNumber <= 3 ? 0 : Math.min(0.35, 0.05 + difficulty * 0.35);
-  const detourChance      = levelNumber <= 3 ? 0 : Math.min(0.35, 0.1  + difficulty * 0.35);
-  const stepChance        = levelNumber <= 3 ? 0 : Math.min(0.25, 0.05 + difficulty * 0.3);
-  const segCount = 6 + Math.floor(levelNumber * 0.8); // 6~13
+  const maxGap = 120 + difficulty * 140;                           // 120~260
+  const spikeChance       = levelNumber <= 2 ? 0 : Math.min(0.75, 0.35 + difficulty * 0.45); // 더 많은 가시
+  const movingSpikeChance = levelNumber <= 3 ? 0 : Math.min(0.50, 0.10 + difficulty * 0.50);
+  const detourChance      = levelNumber <= 2 ? 0 : Math.min(0.40, 0.15 + difficulty * 0.40);
+  const stepChance        = levelNumber <= 2 ? 0 : Math.min(0.30, 0.10 + difficulty * 0.35);
+  const segCount = 8 + Math.floor(levelNumber * 0.9); // 8~17 (더 많은 구간)
 
   for (let i = 0; i < segCount; i++) {
     const roll = rand();
@@ -51,13 +51,13 @@ function generateLevel(levelNumber) {
 
       platforms.push({ x1: platX1, x2: platX1 + platW, y: platY });
 
-      const nextLen = 160 + rand() * 120;
+      const nextLen = 100 + rand() * 80; // 착지 구간 짧게
       groundSegments.push({ x1: cursor, x2: cursor + nextLen });
       cursor += nextLen;
 
     } else if (roll < detourChance + stepChance) {
-      // 계단식 연속 발판 구간: 넓은 구덩이를 여러 발판으로 밟고 건넘
-      const numPlats = 2 + Math.floor(rand() * 2); // 2~3개
+      // 계단식 연속 발판 구간
+      const numPlats = 2 + Math.floor(rand() * 2);
       const platW = 60 + rand() * 30;
       const platSpacing = 85 + rand() * 45;
       const totalGap = platSpacing * (numPlats + 1);
@@ -66,47 +66,45 @@ function generateLevel(levelNumber) {
 
       for (let p = 0; p < numPlats; p++) {
         const px = gapStart + platSpacing * (p + 1) - platW / 2;
-        const py = C.GROUND_Y - (40 + rand() * 40); // 낮게 배치 - 밟기 쉽게
+        const py = C.GROUND_Y - (40 + rand() * 40);
         platforms.push({ x1: px, x2: px + platW, y: py });
       }
 
-      const nextLen = 140 + rand() * 100;
+      const nextLen = 90 + rand() * 70;
       groundSegments.push({ x1: cursor, x2: cursor + nextLen });
       cursor += nextLen;
 
     } else if (roll < detourChance + stepChance + 0.22 + difficulty * 0.1) {
-      // 단순 구덩이 (길이 증가)
+      // 단순 구덩이
       const gapLen = 90 + rand() * (maxGap + 60);
       cursor += gapLen;
-      const nextLen = 150 + rand() * 150;
+      const nextLen = 90 + rand() * 100;
       groundSegments.push({ x1: cursor, x2: cursor + nextLen });
       cursor += nextLen;
 
     } else {
-      // 평범한 바닥 구간 — 정적 가시 + 이동 가시 배치 가능
-      const len = 200 + rand() * 220;
+      // 평지 — 길이를 짧게 제한하고 가시 밀도 높임
+      const len = 80 + rand() * 100; // 최대 180px (기존 420px → 대폭 축소)
       const seg = { x1: cursor, x2: cursor + len };
       groundSegments.push(seg);
 
       if (rand() < spikeChance) {
-        const spikeCount = 1 + Math.floor(rand() * (1 + Math.floor(difficulty * 2)));
+        const spikeCount = 1 + Math.floor(rand() * (2 + Math.floor(difficulty * 2)));
         for (let s = 0; s < spikeCount; s++) {
-          const margin = 40;
-          const sx = seg.x1 + margin + rand() * Math.max(10, len - margin * 2 - spikeCount * 30);
+          const margin = 30;
+          const sx = seg.x1 + margin + rand() * Math.max(10, len - margin * 2 - spikeCount * 26);
           spikes.push({ x: sx, w: 22 });
         }
       }
 
       if (rand() < movingSpikeChance) {
-        const margin = 60;
+        const margin = 50;
         const bx = seg.x1 + margin + rand() * Math.max(10, len - margin * 2);
-        const range = 35 + rand() * 45;
+        const range = 30 + rand() * 50;
         movingSpikes.push({
-          baseX: bx,
-          x: bx,
-          w: 22,
+          baseX: bx, x: bx, w: 22,
           range,
-          speed: 1.2 + rand() * 1.8,
+          speed: 1.2 + rand() * 2.0,
           phase: rand() * Math.PI * 2,
         });
       }

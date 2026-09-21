@@ -1,5 +1,5 @@
-// Web Audio API 기반 사운드 매니저
-// 외부 파일 없이 오실레이터로 배경음악·효과음을 생성한다.
+// Web Audio API 배경음악 + 효과음
+// 외부 파일 없이 오실레이터로 생성. 모든 음을 200~650Hz 대역에 배치해 어느 스피커에서도 들린다.
 
 class AudioManager {
   constructor() {
@@ -9,13 +9,11 @@ class AudioManager {
     this._loopTimer    = null;
   }
 
-  // 첫 번째 사용자 인터랙션 후 호출
   _init() {
     if (this.actx) return;
-    this.actx = new (window.AudioContext || window.webkitAudioContext)();
-
+    this.actx   = new (window.AudioContext || window.webkitAudioContext)();
     this.master = this.actx.createGain();
-    this.master.gain.value = 0.28;
+    this.master.gain.value = 0.45;
     this.master.connect(this.actx.destination);
   }
 
@@ -23,13 +21,13 @@ class AudioManager {
     if (this.actx && this.actx.state === "suspended") this.actx.resume();
   }
 
-  // ─── 배경음악 ───────────────────────────────────────────
+  // ─── 배경음악 ───────────────────────────────────────────────
   startMusic() {
     this._init();
     this.resume();
     if (this._musicRunning) return;
     this._musicRunning = true;
-    this._scheduleLoop(this.actx.currentTime + 0.15);
+    this._scheduleLoop(this.actx.currentTime + 0.08);
   }
 
   stopMusic() {
@@ -37,58 +35,74 @@ class AudioManager {
     clearTimeout(this._loopTimer);
   }
 
+  /*
+   * D 단조 (D minor) 잔잔한 테마
+   * BPM 68 · 4마디 루프 ≈ 14.1초
+   *
+   * 코드: Dm → Bb → F → C
+   * 멜로디 음역: D4(294) ~ C5(523) — 노트북 스피커에서도 선명하게 들리는 대역
+   *
+   * 마디별 흐름
+   *   Bar1 Dm : D4 _ A4  G4   ← 뿌리음에서 5도로 도약
+   *   Bar2 Bb : Bb4  A4  G4 _ ← 정점 Bb4에서 내려옴
+   *   Bar3 F  : A4 _  C5  A4  ← C5로 한 번 치솟고 내려옴
+   *   Bar4 C  : G4  F4  E4 _  ← 반음계 하강, 다시 D4로 해결
+   */
   _scheduleLoop(t0) {
     if (!this._musicRunning) return;
 
-    const BPM  = 72;
-    const B    = 60 / BPM;   // 1 비트 = 0.833s
-    const BAR  = B * 4;      // 1 마디
-    const LOOP = BAR * 4;    // 4마디 루프 ≈ 13.3s
+    const BPM  = 68;
+    const B    = 60 / BPM;       // 1비트 ≈ 0.882s
+    const BAR  = B * 4;          // 1마디 ≈ 3.529s
+    const LOOP = BAR * 4;        // 전체 루프 ≈ 14.12s
 
-    // Am - F - C - G 코드 보이싱 [베이스, 5도, 3도]
+    // 코드 보이싱: [베이스, 패드low, 패드high]
+    // 모든 음을 3~4옥타브 범위로 올려 가청 대역 확보
     const CHORDS = [
-      [110,    165,    130.81],  // Am: A2 E3 C3
-      [87.31,  130.81, 110],    // F:  F2 C3 A2
-      [130.81, 196,    164.81], // C:  C3 G3 E3
-      [98,     146.83, 123.47], // G:  G2 D3 B2
+      [146.83, 220.00, 261.63],  // Dm : D3  A3  C4
+      [233.08, 174.61, 293.66],  // Bb : Bb3 F3  D4
+      [174.61, 261.63, 329.63],  // F  : F3  C4  E4
+      [130.81, 196.00, 246.94],  // C  : C3  G3  B3
     ];
 
-    // 멜로디 [비트 오프셋, 주파수, 지속(비트), 볼륨]
+    // 멜로디: [비트오프셋, Hz, 길이(비트), 볼륨]
     const MEL = [
-      [0,    440,    1.8, 0.13],  // A4  (Am)
-      [2,    392,    1.5, 0.10],  // G4
-      [4,    349.23, 1.8, 0.13],  // F4  (F)
-      [6,    392,    1.5, 0.10],  // G4
-      [8,    329.63, 1.8, 0.13],  // E4  (C)
-      [9.5,  261.63, 1.4, 0.09],  // C4
-      [11,   329.63, 1.5, 0.10],  // E4
-      [12,   392,    1.8, 0.13],  // G4  (G)
-      [13.5, 293.66, 1.5, 0.10],  // D4
-      [15,   246.94, 2.5, 0.11],  // B3  (resolve)
+      [0,    293.66, 1.8, 0.20],  // D4  (Dm 루트)
+      [2,    440.00, 0.9, 0.17],  // A4
+      [3,    392.00, 0.9, 0.15],  // G4
+      [4,    466.16, 0.9, 0.20],  // Bb4 (Bb 루트 — 가장 높은 포인트)
+      [5,    440.00, 0.9, 0.17],  // A4
+      [6,    392.00, 1.8, 0.17],  // G4  (지속)
+      [8,    440.00, 1.8, 0.19],  // A4  (F코드)
+      [10,   523.25, 0.8, 0.17],  // C5  (클라이맥스)
+      [11,   440.00, 0.9, 0.15],  // A4
+      [12,   392.00, 0.9, 0.17],  // G4  (C코드)
+      [13,   349.23, 0.9, 0.15],  // F4
+      [14,   329.63, 1.9, 0.18],  // E4  (긴장 → 다시 D4로 해결)
     ];
 
-    // 코드 패드 + 베이스
+    // 코드 패드 + 베이스 스케줄링
     for (let c = 0; c < 4; c++) {
       const ct = t0 + c * BAR;
-      const ch = CHORDS[c];
-      this._osc(ch[0], ct, BAR * 0.92, 0.19, "sine",     0.04, 0.35); // 베이스
-      this._osc(ch[1], ct, BAR * 0.88, 0.07, "sine",     0.20, 0.40); // 패드 5도
-      this._osc(ch[2], ct, BAR * 0.88, 0.06, "sine",     0.24, 0.40); // 패드 3도
+      const [bass, pLo, pHi] = CHORDS[c];
+      this._osc(bass, ct, BAR * 0.90, 0.22, "sine",     0.04, 0.30);
+      this._osc(pLo,  ct, BAR * 0.85, 0.10, "sine",     0.18, 0.38);
+      this._osc(pHi,  ct, BAR * 0.85, 0.08, "sine",     0.22, 0.38);
     }
 
-    // 멜로디
+    // 멜로디 스케줄링 (삼각파 → 맑은 피리 느낌)
     for (const [beat, freq, dur, vol] of MEL) {
-      this._osc(freq, t0 + beat * B, dur * B, vol, "sine", 0.01, 0.18);
+      this._osc(freq, t0 + beat * B, dur * B, vol, "triangle", 0.008, 0.14);
     }
 
     this._loopTimer = setTimeout(
       () => this._scheduleLoop(t0 + LOOP),
-      (LOOP - 0.35) * 1000
+      (LOOP - 0.3) * 1000
     );
   }
 
-  // 공통 오실레이터 헬퍼 (선형 어택 + 지수 릴리즈)
-  _osc(freq, start, dur, vol, type = "sine", atk = 0.02, rel = 0.08) {
+  // 오실레이터 헬퍼 — 선형 어택 + 지수 릴리즈
+  _osc(freq, start, dur, vol, type = "sine", atk = 0.02, rel = 0.10) {
     const a   = this.actx;
     const osc = a.createOscillator();
     const g   = a.createGain();
@@ -96,41 +110,40 @@ class AudioManager {
     osc.frequency.value = freq;
     g.gain.setValueAtTime(0, start);
     g.gain.linearRampToValueAtTime(vol, start + atk);
-    g.gain.setTargetAtTime(0, start + Math.max(atk, dur - rel), rel / 3);
+    g.gain.setTargetAtTime(0, start + Math.max(atk + 0.01, dur - rel), rel / 3);
     osc.connect(g);
     g.connect(this.master);
     osc.start(start);
-    osc.stop(start + dur + rel + 0.05);
+    osc.stop(start + dur + rel + 0.1);
   }
 
-  // ─── 바운스 효과음 ────────────────────────────────────────
-  // power=true 이면 파워 바운스 (높은 피치)
+  // ─── 바운스 효과음 ───────────────────────────────────────────
   playBounce(power = false) {
     if (!this.actx) return;
     this.resume();
-
     const t      = this.actx.currentTime;
-    const startF = power ? 600 : 460;
-    const endF   = power ? 250 : 185;
-    const vol    = power ? 0.32 : 0.22;
-    const dur    = 0.14;
+    const startF = power ? 620 : 480;
+    const endF   = power ? 260 : 200;
+    const vol    = power ? 0.38 : 0.28;
+    const dur    = 0.13;
 
-    const playLayer = (freqMult, volMult) => {
+    const layer = (fm, vm) => {
       const osc = this.actx.createOscillator();
       const g   = this.actx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(startF * freqMult, t);
-      osc.frequency.exponentialRampToValueAtTime(endF * freqMult, t + dur);
-      g.gain.setValueAtTime(vol * volMult, t);
+      osc.frequency.setValueAtTime(startF * fm, t);
+      osc.frequency.exponentialRampToValueAtTime(endF * fm, t + dur);
+      g.gain.setValueAtTime(vol * vm, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + dur + 0.03);
       osc.connect(g);
       g.connect(this.master);
       osc.start(t);
-      osc.stop(t + dur + 0.06);
+      osc.stop(t + dur + 0.07);
     };
 
-    playLayer(1,   1.0);  // 기본 톤
-    playLayer(2,   0.25); // 2배음 (탄성감 추가)
+    layer(1,    1.00);  // 기본음
+    layer(2,    0.22);  // 2배음 — 탄성감
+    layer(0.5,  0.15);  // 저음 타격감
   }
 }
 
