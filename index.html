@@ -8,20 +8,19 @@
 </head>
 <body>
   <div id="game-wrap">
-    <canvas id="gameCanvas" width="900" height="560"></canvas>
+    <canvas id="gameCanvas" width="900" height="500"></canvas>
 
     <!-- 인게임 HUD -->
     <div id="hud">
-      <div id="hud-level">STAGE 1 / 100</div>
+      <div id="hud-level">STAGE 1 / 10</div>
       <div id="hud-progress"><div id="hud-progress-fill"></div></div>
       <div id="hud-attempts">시도 1</div>
-      <div id="hud-stars">★ 0</div>
     </div>
 
     <!-- 시작 화면 -->
     <div id="startScreen" class="screen">
       <h1>BOUNCE BALL</h1>
-      <p class="sub">방향키로 공을 조작해 100개 스테이지를 클리어하세요</p>
+      <p class="sub">방향키로 공을 조작해 10개 스테이지를 클리어하세요</p>
       <div class="btn-row">
         <button id="btnContinue" class="btn primary">이어하기</button>
         <button id="btnRestart" class="btn">처음부터</button>
@@ -42,7 +41,7 @@
     <!-- 전체 클리어 -->
     <div id="allClearScreen" class="screen hidden">
       <h1>ALL CLEAR!</h1>
-      <p class="sub">100개 스테이지를 모두 클리어했습니다!</p>
+      <p class="sub">10개 스테이지를 모두 클리어했습니다!</p>
       <button id="btnPlayAgain" class="btn primary">처음부터 다시하기</button>
     </div>
 
@@ -60,7 +59,6 @@
   </div>
 
   <script src="js/constants.js"></script>
-  <script src="js/audio.js"></script>
   <script src="js/levels.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
