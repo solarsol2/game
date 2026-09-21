@@ -104,9 +104,10 @@ class Game {
       const hit = this._findLanding(b, prevBottom);
       if (hit) {
         b.y = hit.surfaceY - C.BALL_RADIUS;
-        const power = this.keys.up ? C.POWER_BOUNCE_MULT : 1;
-        b.vy = C.BOUNCE_VY * power;
+        const isPower = this.keys.up;
+        b.vy = C.BOUNCE_VY * (isPower ? C.POWER_BOUNCE_MULT : 1);
         b.squash = 1;
+        if (this.callbacks.onBounce) this.callbacks.onBounce(isPower);
       }
     }
 

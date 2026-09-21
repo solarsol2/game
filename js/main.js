@@ -50,8 +50,9 @@
     onAllClear: () => {
       allClearScreen.classList.remove("hidden");
     },
-    onDeath: () => {
-      // 필요 시 사망 이펙트/사운드 훅 지점
+    onDeath: () => {},
+    onBounce: (isPower) => {
+      audioManager.playBounce(isPower);
     },
   });
 
@@ -66,6 +67,7 @@
   function startGame(levelNumber) {
     startScreen.classList.add("hidden");
     allClearScreen.classList.add("hidden");
+    audioManager.startMusic();
     game.loadLevel(levelNumber);
     saveProgress(levelNumber);
   }
