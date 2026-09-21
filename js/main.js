@@ -5,6 +5,7 @@
   const hudLevel = document.getElementById("hud-level");
   const hudProgressFill = document.getElementById("hud-progress-fill");
   const hudAttempts = document.getElementById("hud-attempts");
+  const hudStars = document.getElementById("hud-stars");
 
   const startScreen = document.getElementById("startScreen");
   const clearScreen = document.getElementById("clearScreen");
@@ -40,6 +41,7 @@
       hudLevel.textContent = `STAGE ${s.level} / ${s.total}`;
       hudProgressFill.style.width = `${(s.level / s.total) * 100}%`;
       hudAttempts.textContent = `시도 ${s.attempts}`;
+      hudStars.textContent = `★ ${s.stars}/${s.totalStars}`;
     },
     onClear: (levelNumber) => {
       saveProgress(Math.min(levelNumber + 1, C.TOTAL_LEVELS));
@@ -51,7 +53,10 @@
       allClearScreen.classList.remove("hidden");
     },
     onDeath: () => {
-      // 필요 시 사망 이펙트/사운드 훅 지점
+      SFX.playDeath();
+    },
+    onBounce: () => {
+      SFX.playBounce();
     },
   });
 
@@ -64,6 +69,7 @@
   }
 
   function startGame(levelNumber) {
+    SFX.unlock();
     startScreen.classList.add("hidden");
     allClearScreen.classList.add("hidden");
     game.loadLevel(levelNumber);
@@ -91,6 +97,7 @@
   };
 
   window.addEventListener("keydown", (e) => {
+    SFX.unlock();
     const k = KEY_MAP[e.key];
     if (k) {
       game.setKey(k, true);

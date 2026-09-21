@@ -8,13 +8,14 @@
 </head>
 <body>
   <div id="game-wrap">
-    <canvas id="gameCanvas" width="900" height="500"></canvas>
+    <canvas id="gameCanvas" width="900" height="560"></canvas>
 
     <!-- 인게임 HUD -->
     <div id="hud">
       <div id="hud-level">STAGE 1 / 100</div>
       <div id="hud-progress"><div id="hud-progress-fill"></div></div>
       <div id="hud-attempts">시도 1</div>
+      <div id="hud-stars">★ 0</div>
     </div>
 
     <!-- 시작 화면 -->
@@ -59,6 +60,7 @@
   </div>
 
   <script src="js/constants.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/levels.js"></script>
   <script src="js/game.js"></script>
   <script src="js/main.js"></script>
