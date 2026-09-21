@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>바운스볼 - Bounce Ball</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="gameCanvas" width="900" height="500"></canvas>
+
+    <!-- 인게임 HUD -->
+    <div id="hud">
+      <div id="hud-level">STAGE 1 / 100</div>
+      <div id="hud-progress"><div id="hud-progress-fill"></div></div>
+      <div id="hud-attempts">시도 1</div>
+    </div>
+
+    <!-- 시작 화면 -->
+    <div id="startScreen" class="screen">
+      <h1>BOUNCE BALL</h1>
+      <p class="sub">방향키로 공을 조작해 100개 스테이지를 클리어하세요</p>
+      <div class="btn-row">
+        <button id="btnContinue" class="btn primary">이어하기</button>
+        <button id="btnRestart" class="btn">처음부터</button>
+      </div>
+      <div class="keys-guide">
+        <div><span class="key">←</span><span class="key">→</span> 이동</div>
+        <div><span class="key">↑</span> 파워 바운스</div>
+        <div><span class="key">↓</span> 급강하</div>
+      </div>
+    </div>
+
+    <!-- 스테이지 클리어 -->
+    <div id="clearScreen" class="screen hidden">
+      <h2 id="clearTitle">STAGE CLEAR!</h2>
+      <p id="clearSub">다음 스테이지로 이동합니다...</p>
+    </div>
+
+    <!-- 전체 클리어 -->
+    <div id="allClearScreen" class="screen hidden">
+      <h1>ALL CLEAR!</h1>
+      <p class="sub">100개 스테이지를 모두 클리어했습니다!</p>
+      <button id="btnPlayAgain" class="btn primary">처음부터 다시하기</button>
+    </div>
+
+    <!-- 모바일 터치 컨트롤 -->
+    <div id="touchControls">
+      <div class="touch-side">
+        <button id="tLeft" class="touch-btn">◀</button>
+        <button id="tRight" class="touch-btn">▶</button>
+      </div>
+      <div class="touch-side">
+        <button id="tUp" class="touch-btn">▲</button>
+        <button id="tDown" class="touch-btn">▼</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/constants.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
